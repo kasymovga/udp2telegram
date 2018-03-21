@@ -89,6 +89,53 @@ finish:
 	return r;
 }
 
+void htmlescape(const char *in, char *out, int out_len) {
+	const char *c;
+	for (c = in; *c && out_len > 1; c++) {
+		switch (*c) {
+		case '>':
+			if (out_len > 5) {
+				strcpy(out, "&gt;");
+				out_len -= 4;
+				out += 4;
+			}
+			break;
+		case '<':
+			if (out_len > 5) {
+				strcpy(out, "&lt;");
+				out_len -= 4;
+				out += 4;
+			}
+			break;
+		case '&':
+			if (out_len > 6) {
+				strcpy(out, "&amp;");
+				out_len -= 5;
+				out += 5;
+			}
+			break;
+		default:
+			*out = *c;
+			out_len--;
+			out++;
+			break;
+		}
+	}
+	*out = '\0';
+}
+
+void message2html(const char *in, char *out, int out_len) {
+	char escaped[out_len];
+	htmlescape(in, escaped, out_len);
+	char *colon = strchr(escaped, ':');
+	if (colon) {
+		*colon = '\0';
+		snprintf(out, out_len, "<b>%s</b>:%s", escaped, &colon[1]);
+	} else {
+		snprintf(out, out_len, "%s", escaped);
+	}
+}
+
 int telegram_response_is_ok(json_object *resp) {
 	struct json_object *ok;
 	if (!json_object_object_get_ex(resp, "ok", &ok))
@@ -130,6 +177,7 @@ int main(int argc, char **argv) {
 	char *colon;
 	const char *tg_text, *tg_nick;
 	char peer_string[1024];
+	char html_message[2048];
 	int sender_peer;
 	char *msg_escaped;
 	if (argc < 3) {
@@ -264,8 +312,10 @@ int main(int argc, char **argv) {
 		}
 		json_object_put(updates);
 		if (*udp_message && tg_chat_id_obtained) {
-			msg_escaped = curl_easy_escape(curl, udp_message, strlen(udp_message));
-			snprintf(buf_out, BUFLEN, "chat_id=%lli&text=%s", (long long int)tg_chat_id, msg_escaped);
+			message2html(udp_message, html_message, sizeof(html_message));
+			msg_escaped = curl_easy_escape(curl, html_message, strlen(html_message));
+			//printf("html_message=%s\n", html_message);
+			snprintf(buf_out, BUFLEN, "chat_id=%lli&parse_mode=HTML&text=%s", (long long int)tg_chat_id, msg_escaped);
 			curl_free(msg_escaped);
 			sendmessage = telegram_api_query(token, "sendMessage", buf_out);
 			if (sendmessage) {
