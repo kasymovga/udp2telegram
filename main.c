@@ -122,7 +122,6 @@ int main(int argc, char **argv) {
 	unsigned int extresp_query_string_len = strlen(extresp_query_string);
 	const char *other_addr;
 	int port = UDPCHAT_PORT;
-	struct json_object *updates, *update, *result, *message, *text, *chat, *chat_id, *from, *first_name, *update_id, *sendmessage;
 	char update_id_str[64];
 	long int tg_chat_id, tg_update_id = -2, tg_update_id_new;
 	int tg_chat_id_obtained = 0;
@@ -130,7 +129,7 @@ int main(int argc, char **argv) {
 	const char *udp_message;
 	struct sockaddr_in peers[PEER_MAXCOUNT];
 	char *colon;
-	const char *tg_text, *tg_firstname;
+	const char *tg_text, *tg_nick;
 	char peer_string[1024];
 	int sender_peer;
 	char *msg_escaped;
@@ -213,6 +212,7 @@ int main(int argc, char **argv) {
 		}
 
 		snprintf(update_id_str, sizeof(update_id_str), "offset=%li", tg_update_id + 1);
+		struct json_object *updates, *result, *sendmessage;
 		updates = telegram_api_query(token, "getUpdates", update_id_str);
 		if (!updates)
 			continue;
@@ -226,6 +226,7 @@ int main(int argc, char **argv) {
 
 		n = json_object_array_length(result);
 		for (i = 0; i < n; i++) {
+			struct json_object *update, *message, *text, *chat, *chat_id, *from, *first_name, *update_id, *username;
 			update = json_object_array_get_idx(result, i);
 			message = json_object_object_get(update, "message");
 			if (!message) continue;
@@ -244,8 +245,16 @@ int main(int argc, char **argv) {
 			if (!chat_id) continue;
 			from = json_object_object_get(message, "from");
 			if (!from) continue;
-			first_name = json_object_object_get(from, "first_name");
-			if (!first_name) continue;
+			username = json_object_object_get(from, "username");
+			if (username)
+				tg_nick = json_object_get_string(username);
+			else {
+				first_name = json_object_object_get(from, "first_name");
+				if (first_name)
+					tg_nick = json_object_get_string(first_name);
+				else
+					tg_nick = "anonymous";
+			}
 			if (tg_chat_id_obtained) {
 				if (tg_chat_id != json_object_get_int(chat_id))
 					continue;
@@ -254,10 +263,9 @@ int main(int argc, char **argv) {
 				tg_chat_id_obtained = 1;
 			}
 			tg_text = json_object_get_string(text);
-			tg_firstname = json_object_get_string(first_name);
 			//printf("Text (from chat: %li): %s\n", tg_chat_id, tg_text);
 
-			snprintf(buf_out, BUFLEN, "%s %s@telegram: %s", extresp_query_string, tg_firstname, tg_text);
+			snprintf(buf_out, BUFLEN, "%s %s@telegram: %s", extresp_query_string, tg_nick, tg_text);
 			for (i = 0; i < peers_count; i++) {
 				sendto(fds[0].fd, buf_out, strlen(buf_out), 0, &peers[i], sizeof(peers[i]));
 			}
