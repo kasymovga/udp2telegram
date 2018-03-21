@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 	int sender_peer;
 	char *msg_escaped;
 	if (argc < 3) {
-		printf("Usage: %s <token> <peer1> [peer2] ...\n");
+		printf("Usage: %s <token> <peer1> [peer2] ...\n", argv[0]);
 		goto finish;
 	}
 	for (i = 2; i < argc && peers_count < PEER_MAXCOUNT; i++) {
