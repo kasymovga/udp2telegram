@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
 					tg_nick = "anonymous";
 			}
 			if (tg_chat_id_obtained) {
-				if (tg_chat_id != json_object_get_int(chat_id))
+				if (tg_chat_id != json_object_get_int64(chat_id))
 					continue;
 			} else {
 				tg_chat_id = json_object_get_int64(chat_id);
