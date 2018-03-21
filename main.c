@@ -13,6 +13,7 @@
 #include <curl/easy.h>
 #include <json.h>
 #include <json_object.h>
+#include <iconv.h>
 
 #define UDPCHAT_PORT 16887
 #define BUFLEN 2048 //Must be more than enough
@@ -22,6 +23,7 @@
 #define TELEGRAM_API_CALL_URL_SIZE 1024
 
 CURL *curl;
+iconv_t utf8_validator;
 
 int telegram_api_init() {
 	int r = 0;
@@ -30,6 +32,7 @@ int telegram_api_init() {
 		goto finish;
 	}
 	r = 1;
+	utf8_validator = iconv_open("UTF-8//IGNORE","UTF-8");
 finish:
 	return r;
 }
@@ -126,7 +129,17 @@ void htmlescape(const char *in, char *out, int out_len) {
 
 void message2html(const char *in, char *out, int out_len) {
 	char escaped[out_len];
-	htmlescape(in, escaped, out_len);
+	char utf8_validated[out_len];
+	size_t ignore1 = strlen(in), converted = out_len - 1;
+	char *in_copy = (char*)in;
+	char *utf8_validated_copy = utf8_validated;
+	if (utf8_validator != (iconv_t) -1) {
+		iconv(utf8_validator, &in_copy, &ignore1, &utf8_validated_copy, &converted);
+		*utf8_validated_copy = '\0';
+	} else
+		snprintf(utf8_validator, out_len, "%s", in);
+
+	htmlescape(utf8_validated, escaped, out_len);
 	char *colon = strchr(escaped, ':');
 	if (colon) {
 		*colon = '\0';
@@ -153,6 +166,9 @@ int telegram_response_is_ok(json_object *resp) {
 void telegram_api_shutdown() {
 	if (curl)
 		curl_easy_cleanup(curl);
+
+	if (utf8_validator != (iconv_t) -1)
+		iconv_close(utf8_validator);
 }
 
 int main(int argc, char **argv) {
