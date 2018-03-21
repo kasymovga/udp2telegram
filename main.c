@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 		goto finish;
 	}
 
-	if (!peers) {
+	if (!peers_count) {
 		printf("no peers\n");
 	}
 	if ((fds[0].fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
