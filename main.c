@@ -80,7 +80,7 @@ struct json_object* telegram_api_query(const char *token, const char *method, co
 	out.data[out.size] = '\0';
 	//printf("%s\n", out.data);
 	if (resp_code != 200) {
-		printf("api failed\n");
+		printf("api failed %s\n", out.data);
 		goto finish;
 	}
 	r = json_tokener_parse(out.data);
