@@ -120,7 +120,6 @@ int main(int argc, char **argv) {
 	fds[0].fd = -1;
 	const char *extresp_query_string = "\377\377\377\377extResponse udpchat ";
 	unsigned int extresp_query_string_len = strlen(extresp_query_string);
-	const char *other_addr;
 	int port = UDPCHAT_PORT;
 	char update_id_str[64];
 	long int tg_chat_id, tg_update_id = -2, tg_update_id_new;
