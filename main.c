@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 	unsigned int extresp_query_string_len = strlen(extresp_query_string);
 	int port = UDPCHAT_PORT;
 	char update_id_str[64];
-	long int tg_chat_id = 0, tg_update_id = -2, tg_update_id_new;
+	long long int tg_chat_id = 0, tg_update_id = -2, tg_update_id_new;
 	int tg_chat_id_obtained = 0;
 	int peers_count = 0;
 	const char *udp_message;
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 				printf("Unknown request: %s\n", buf);
 		}
 
-		snprintf(update_id_str, sizeof(update_id_str), "offset=%li", tg_update_id + 1);
+		snprintf(update_id_str, sizeof(update_id_str), "offset=%lli", (long long int)tg_update_id + 1);
 		struct json_object *updates, *result, *sendmessage;
 		updates = telegram_api_query(token, "getUpdates", update_id_str);
 		if (!updates)
@@ -250,8 +250,9 @@ int main(int argc, char **argv) {
 				if (tg_chat_id != json_object_get_int(chat_id))
 					continue;
 			} else {
-				tg_chat_id = json_object_get_int(chat_id);
+				tg_chat_id = json_object_get_int64(chat_id);
 				tg_chat_id_obtained = 1;
+				printf("Get chat id: %lli\n", (long long int)tg_chat_id);
 			}
 			tg_text = json_object_get_string(text);
 			//printf("Text (from chat: %li): %s\n", tg_chat_id, tg_text);
@@ -264,7 +265,7 @@ int main(int argc, char **argv) {
 		json_object_put(updates);
 		if (*udp_message && tg_chat_id_obtained) {
 			msg_escaped = curl_easy_escape(curl, udp_message, strlen(udp_message));
-			snprintf(buf_out, BUFLEN, "chat_id=%li&text=%s", (long int)tg_chat_id, msg_escaped);
+			snprintf(buf_out, BUFLEN, "chat_id=%lli&text=%s", (long long int)tg_chat_id, msg_escaped);
 			curl_free(msg_escaped);
 			sendmessage = telegram_api_query(token, "sendMessage", buf_out);
 			if (sendmessage) {
