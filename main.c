@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 	unsigned int extresp_query_string_len = strlen(extresp_query_string);
 	int port = UDPCHAT_PORT;
 	char update_id_str[64];
-	long int tg_chat_id, tg_update_id = -2, tg_update_id_new;
+	long int tg_chat_id = 0, tg_update_id = -2, tg_update_id_new;
 	int tg_chat_id_obtained = 0;
 	int peers_count = 0;
 	const char *udp_message;
