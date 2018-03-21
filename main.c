@@ -132,7 +132,7 @@ void message2html(const char *in, char *out, int out_len) {
 		*colon = '\0';
 		snprintf(out, out_len, "<b>%s</b>:%s", escaped, &colon[1]);
 	} else {
-		snprintf(out, out_len, "%s", escaped);
+		snprintf(out, out_len, "<i>%s</i>", escaped);
 	}
 }
 
