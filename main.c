@@ -251,7 +251,7 @@ int main(int argc, char **argv) {
 						if (sender_peer == i)
 							continue;
 
-						printf("Send message to peer %i\n", i);
+						//printf("Send message to peer %i\n", i);
 						sendto(fds[0].fd, buf, recv_len, 0, &peers[i], sizeof(peers[i]));
 					}
 			} else
