@@ -90,8 +90,8 @@ finish:
 }
 
 int telegram_response_is_ok(json_object *resp) {
-	struct json_object *ok = json_object_object_get(resp, "ok");
-	if (!ok)
+	struct json_object *ok;
+	if (!json_object_object_get_ex(resp, "ok", &ok))
 		return 0;
 
 	if (json_object_get_type(ok) != json_type_boolean)
@@ -219,37 +219,29 @@ int main(int argc, char **argv) {
 		if (!telegram_response_is_ok(updates))
 			printf("telegram api answer is not ok\n");
 
-		result = json_object_object_get(updates, "result");
-		if (!result)
+		;
+		if (!json_object_object_get_ex(updates, "result", &result))
 			continue;
 
 		n = json_object_array_length(result);
 		for (i = 0; i < n; i++) {
 			struct json_object *update, *message, *text, *chat, *chat_id, *from, *first_name, *update_id, *username;
 			update = json_object_array_get_idx(result, i);
-			message = json_object_object_get(update, "message");
-			if (!message) continue;
-			update_id = json_object_object_get(update, "update_id");
-			if (!update_id) continue;
+			if (!json_object_object_get_ex(update, "message", &message)) continue;
+			if (!json_object_object_get_ex(update, "update_id", &update_id)) continue;
 			tg_update_id_new = json_object_get_int64(update_id);
 			if (tg_update_id_new > tg_update_id)
 				tg_update_id = tg_update_id_new;
 
 			//printf("Get message from telegram\n");
-			text = json_object_object_get(message, "text");
-			if (!text) continue;
-			chat = json_object_object_get(message, "chat");
-			if (!chat) continue;
-			chat_id = json_object_object_get(chat, "id");
-			if (!chat_id) continue;
-			from = json_object_object_get(message, "from");
-			if (!from) continue;
-			username = json_object_object_get(from, "username");
-			if (username)
+			if (!json_object_object_get_ex(message, "text", &text)) continue;
+			if (!json_object_object_get_ex(message, "chat", &chat)) continue;
+			if (!json_object_object_get_ex(chat, "id", &chat_id)) continue;
+			if (!json_object_object_get_ex(message, "from", &from)) continue;
+			if (json_object_object_get_ex(from, "username", &username))
 				tg_nick = json_object_get_string(username);
 			else {
-				first_name = json_object_object_get(from, "first_name");
-				if (first_name)
+				if (json_object_object_get_ex(from, "first_name", &first_name))
 					tg_nick = json_object_get_string(first_name);
 				else
 					tg_nick = "anonymous";
