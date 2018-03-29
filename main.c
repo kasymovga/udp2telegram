@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
 				goto finish;
 
 			buf[recv_len] = '\0';
-			printf("%s\n", buf);
+			//printf("%s\n", buf);
 			if (memcmp(buf, extresp_query_string, extresp_query_string_len) == 0) {
 				for (i = 0; i < peers_count; i++) {
 					if (memcmp(&si_other.sin_addr, &peers[i].sin_addr, sizeof(struct in_addr)) == 0 && si_other.sin_port == peers[i].sin_port) {
