@@ -280,12 +280,13 @@ int main(int argc, char **argv) {
 		if (!updates)
 			continue;
 
-		if (!telegram_response_is_ok(updates))
+		if (!telegram_response_is_ok(updates)) {
 			printf("telegram api answer is not ok\n");
+			goto skip_parse;
+		}
 
-		;
 		if (!json_object_object_get_ex(updates, "result", &result))
-			continue;
+			goto skip_parse;
 
 		n = json_object_array_length(result);
 		for (i = 0; i < n; i++) {
@@ -326,7 +327,10 @@ int main(int argc, char **argv) {
 				sendto(fds[0].fd, buf_out, strlen(buf_out), 0, &peers[i], sizeof(peers[i]));
 			}
 		}
-		json_object_put(updates);
+skip_parse:
+		if (updates)
+			json_object_put(updates);
+
 		if (*udp_message && tg_chat_id_obtained) {
 			message2html(udp_message, html_message, sizeof(html_message));
 			msg_escaped = curl_easy_escape(curl, html_message, strlen(html_message));
