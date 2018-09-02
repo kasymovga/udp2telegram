@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				if (sender_peer < 0) {
-					printf("Peer not found for packet\n");
+					printf("Peer %s:%i not found for packet\n", inet_ntoa(si_other.sin_addr), (int)htons(si_other.sin_port));
 				}
 				if (udp_message[0] != '\0')
 					for (i = 0; i < peers_count; i++) {
