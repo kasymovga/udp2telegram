@@ -4,7 +4,7 @@ CFLAGS_BASE=$(CFLAGS) `pkg-config --cflags libcurl` `pkg-config --cflags json-c`
 LDFLAGS=
 LDFLAGS_BASE=$(LDFLAGS) `pkg-config --libs libcurl` `pkg-config --libs json-c`
 COMP=$(CC) -c $(CFLAGS_BASE) -o
-LINK=$(CC) $(LDFLAGS_BASE) -o
+LINK=$(CC) -o
 
 .PHONY: all
 
@@ -14,4 +14,4 @@ main.o : main.c
 	$(COMP) $@ $<
 
 udpchat: main.o
-	$(LINK) $@ $^
+	$(LINK) $@ $^ $(LDFLAGS_BASE)
