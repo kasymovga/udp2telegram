@@ -17,7 +17,7 @@
 
 #define UDPCHAT_PORT 16887
 #define BUFLEN 2048 //Must be more than enough
-#define PEER_MAXCOUNT 32
+#define PEER_MAXCOUNT 256
 
 #define TELEGRAM_API_URL "https://api.telegram.org"
 #define TELEGRAM_API_CALL_URL_SIZE 1024
