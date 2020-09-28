@@ -171,6 +171,33 @@ void telegram_api_shutdown() {
 		iconv_close(utf8_validator);
 }
 
+long long int restore_chat_id() {
+	long long int id = 0;
+	FILE *f = NULL;
+	if (!(f = fopen(".chatid", "r")))
+		goto finish;
+
+	fscanf(f, "%lli", &id);
+	if (id)
+		printf("Restored chat id: %lli\n", id);
+finish:
+	if (f)
+		fclose(f);
+
+	return id;
+}
+
+void save_chat_id(long long int id) {
+	FILE *f = NULL;
+	if (!(f = fopen(".chatid", "w")))
+		goto finish;
+
+	fprintf(f, "%lli", id);
+finish:
+	if (f)
+		fclose(f);
+}
+
 int main(int argc, char **argv) {
 	struct sockaddr_in si_me, si_other;
 	const char *token;
@@ -200,6 +227,10 @@ int main(int argc, char **argv) {
 		printf("Usage: %s <token> <peer1> [peer2] ...\n", argv[0]);
 		goto finish;
 	}
+	tg_chat_id = restore_chat_id();
+	if (tg_chat_id)
+		tg_chat_id_obtained = 1;
+
 	for (i = 2; i < argc && peers_count < PEER_MAXCOUNT; i++) {
 		strncpy(peer_string, argv[i], sizeof(peer_string));
 		peer_string[sizeof(peer_string) - 1] = '\0';
@@ -260,7 +291,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				if (sender_peer < 0) {
-					printf("Peer not found for packet\n");
+					printf("Peer %s:%i not found for packet\n", inet_ntoa(si_other.sin_addr), (int)htons(si_other.sin_port));
 				}
 				if (udp_message[0] != '\0')
 					for (i = 0; i < peers_count; i++) {
@@ -317,6 +348,7 @@ int main(int argc, char **argv) {
 			} else {
 				tg_chat_id = json_object_get_int64(chat_id);
 				tg_chat_id_obtained = 1;
+				save_chat_id(tg_chat_id);
 				printf("Get chat id: %lli\n", (long long int)tg_chat_id);
 			}
 			tg_text = json_object_get_string(text);
