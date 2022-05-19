@@ -25,6 +25,199 @@
 CURL *curl;
 iconv_t utf8_validator;
 
+uint32_t utf8_range[5] = {
+	1,       // invalid - let's not allow the creation of 0-bytes :P
+	1,       // ascii minimum
+	0x80,    // 2-byte minimum
+	0x800,   // 3-byte minimum
+	0x10000, // 4-byte minimum
+};
+
+static char qfont_table[256] = {
+	'\0', '#',  '#',  '#',  '#',  '.',  '#',  '#',
+	'#',  9,    10,   '#',  ' ',  13,   '.',  '.',
+	'[',  ']',  '0',  '1',  '2',  '3',  '4',  '5',
+	'6',  '7',  '8',  '9',  '.',  '<',  '=',  '>',
+	' ',  '!',  '"',  '#',  '$',  '%',  '&',  '\'',
+	'(',  ')',  '*',  '+',  ',',  '-',  '.',  '/',
+	'0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',
+	'8',  '9',  ':',  ';',  '<',  '=',  '>',  '?',
+	'@',  'A',  'B',  'C',  'D',  'E',  'F',  'G',
+	'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',
+	'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',
+	'X',  'Y',  'Z',  '[',  '\\', ']',  '^',  '_',
+	'`',  'a',  'b',  'c',  'd',  'e',  'f',  'g',
+	'h',  'i',  'j',  'k',  'l',  'm',  'n',  'o',
+	'p',  'q',  'r',  's',  't',  'u',  'v',  'w',
+	'x',  'y',  'z',  '{',  '|',  '}',  '~',  '<',
+
+	'<',  '=',  '>',  '#',  '#',  '.',  '#',  '#',
+	'#',  '#',  ' ',  '#',  ' ',  '>',  '.',  '.',
+	'[',  ']',  '0',  '1',  '2',  '3',  '4',  '5',
+	'6',  '7',  '8',  '9',  '.',  '<',  '=',  '>',
+	' ',  '!',  '"',  '#',  '$',  '%',  '&',  '\'',
+	'(',  ')',  '*',  '+',  ',',  '-',  '.',  '/',
+	'0',  '1',  '2',  '3',  '4',  '5',  '6',  '7',
+	'8',  '9',  ':',  ';',  '<',  '=',  '>',  '?',
+	'@',  'A',  'B',  'C',  'D',  'E',  'F',  'G',
+	'H',  'I',  'J',  'K',  'L',  'M',  'N',  'O',
+	'P',  'Q',  'R',  'S',  'T',  'U',  'V',  'W',
+	'X',  'Y',  'Z',  '[',  '\\', ']',  '^',  '_',
+	'`',  'a',  'b',  'c',  'd',  'e',  'f',  'g',
+	'h',  'i',  'j',  'k',  'l',  'm',  'n',  'o',
+	'p',  'q',  'r',  's',  't',  'u',  'v',  'w',
+	'x',  'y',  'z',  '{',  '|',  '}',  '~',  '<'
+};
+
+unsigned char utf8_lengths[256] = { // 0 = invalid
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // ascii characters
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 0x80 - 0xBF are within multibyte sequences
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // they could be interpreted as 2-byte starts but
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // the codepoint would be < 127
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, // C0 and C1 would also result in overlong encodings
+	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	// with F5 the codepoint is above 0x10FFFF,
+	// F8-FB would start 5-byte sequences
+	// FC-FD would start 6-byte sequences
+	// ...
+};
+
+#define U8_ANALYZE_INFINITY 7
+static int u8_analyze(const char *_s, size_t *_start, size_t *_len, uint32_t *_ch, size_t _maxlen) {
+	const unsigned char *s = (const unsigned char*)_s;
+	size_t i, j;
+	size_t bits = 0;
+	uint32_t ch;
+	i = 0;
+findchar:
+	while (i < _maxlen && s[i] && (bits = utf8_lengths[s[i]]) == 0)
+		++i;
+
+	if (i >= _maxlen || !s[i]) {
+		if (_start) *_start = i;
+		if (_len) *_len = 0;
+		return 0;
+	}
+	if (bits == 1) { // ascii
+		if (_start) *_start = i;
+		if (_len) *_len = 1;
+		if (_ch) *_ch = (uint32_t)s[i];
+		return 1;
+	}
+	ch = (s[i] & (0xFF >> bits));
+	for (j = 1; j < bits; ++j) {
+		if ( (s[i+j] & 0xC0) != 0x80 ) {
+			i += j;
+			goto findchar;
+		}
+		ch = (ch << 6) | (s[i+j] & 0x3F);
+	}
+	if (ch < utf8_range[bits] || ch >= 0x10FFFF) {
+		i += bits;
+		goto findchar;
+	}
+	if (_start)
+		*_start = i;
+
+	if (_len)
+		*_len = bits;
+
+	if (_ch)
+		*_ch = ch;
+
+	return 1;
+}
+
+uint32_t u8_getchar(const char *_s, const char **_end) {
+	size_t st, ln;
+	uint32_t ch;
+	if (!u8_analyze(_s, &st, &ln, &ch, U8_ANALYZE_INFINITY))
+		ch = 0;
+
+	if (_end)
+		*_end = _s + st + ln;
+
+	return ch;
+}
+
+int u8_fromchar(uint32_t w, char *to, size_t maxlen) {
+	if (maxlen < 1)
+		return 0;
+
+	if (!w)
+		return 0;
+
+	if (w < 0x80) {
+		to[0] = (char)w;
+		return 1;
+	}
+	// for a little speedup
+	if (w < 0x800) {
+		if (maxlen < 2)
+			return 0;
+
+		to[1] = 0x80 | (w & 0x3F); w >>= 6;
+		to[0] = 0xC0 | w;
+		return 2;
+	}
+	if (w < 0x10000) {
+		if (maxlen < 2)
+			return 0;
+
+		to[2] = 0x80 | (w & 0x3F); w >>= 6;
+		to[1] = 0x80 | (w & 0x3F); w >>= 6;
+		to[0] = 0xE0 | w;
+		return 3;
+	}
+	// RFC 3629
+	if (w <= 0x10FFFF) {
+		if (maxlen < 4)
+			return -1;
+
+		to[3] = 0x80 | (w & 0x3F); w >>= 6;
+		to[2] = 0x80 | (w & 0x3F); w >>= 6;
+		to[1] = 0x80 | (w & 0x3F); w >>= 6;
+		to[0] = 0xF0 | w;
+		return 4;
+	}
+	return 0;
+}
+
+static void string_sanitize(char *in, char *out) {
+	uint32_t c;
+	char buf[8];
+	int n;
+	while (*in) {
+		c = u8_getchar(in, (const char **)&in);
+		if (c >= 0xE000 && c < 0xE100) c -= 0xE000;
+		if (c < 256)
+			c = qfont_table[c];
+
+		if (c) {
+			if (c < 128) {
+				*out = c;
+				out++;
+			} else {
+				n = u8_fromchar(c, buf, 8);
+				memcpy(out, buf, n);
+				out += n;
+			}
+		}
+	}
+	*out = 0;
+}
+
+
 int telegram_api_init() {
 	int r = 0;
 	if (!(curl = curl_easy_init())) {
@@ -129,17 +322,7 @@ void htmlescape(const char *in, char *out, int out_len) {
 
 void message2html(const char *in, char *out, int out_len) {
 	char escaped[out_len];
-	char utf8_validated[out_len];
-	size_t ignore1 = strlen(in), converted = out_len - 1;
-	char *in_copy = (char*)in;
-	char *utf8_validated_copy = utf8_validated;
-	if (utf8_validator != (iconv_t) -1) {
-		iconv(utf8_validator, &in_copy, &ignore1, &utf8_validated_copy, &converted);
-		*utf8_validated_copy = '\0';
-	} else
-		snprintf(utf8_validator, out_len, "%s", in);
-
-	htmlescape(utf8_validated, escaped, out_len);
+	htmlescape(in, escaped, out_len);
 	char *colon = strchr(escaped, ':');
 	if (colon) {
 		*colon = '\0';
@@ -266,8 +449,7 @@ int main(int argc, char **argv) {
 	if (bind(fds[0].fd, (struct sockaddr*)&si_me, sizeof(si_me)) == -1)
 		goto finish;
 
-	for(;;)
-	{
+	for (;;) {
 		sender_peer = -1;
 		fds[0].revents = 0;
 		fds[0].events = POLLIN;
@@ -275,8 +457,7 @@ int main(int argc, char **argv) {
 			goto finish;
 
 		udp_message = "";
-		if (fds[0].revents & POLLIN)
-		{
+		if (fds[0].revents & POLLIN) {
 			if ((recv_len = recvfrom(fds[0].fd, buf, BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) < 0)
 				goto finish;
 
@@ -304,7 +485,6 @@ int main(int argc, char **argv) {
 			} else
 				printf("Unknown request: %s\n", buf);
 		}
-
 		snprintf(update_id_str, sizeof(update_id_str), "offset=%lli", (long long int)tg_update_id + 1);
 		struct json_object *updates, *result, *sendmessage;
 		updates = telegram_api_query(token, "getUpdates", update_id_str);
@@ -364,6 +544,7 @@ skip_parse:
 			json_object_put(updates);
 
 		if (*udp_message && tg_chat_id_obtained) {
+			string_sanitize((char *)udp_message, (char *)udp_message);
 			message2html(udp_message, html_message, sizeof(html_message));
 			msg_escaped = curl_easy_escape(curl, html_message, strlen(html_message));
 			//printf("html_message=%s\n", html_message);
